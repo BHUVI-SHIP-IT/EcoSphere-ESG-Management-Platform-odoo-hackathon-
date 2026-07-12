@@ -18,7 +18,6 @@ import { Badge } from "@/components/ui/badge";
 import { Icon } from "@/components/icon";
 import { Sidebar } from "./sidebar";
 import { NotificationDrawer } from "./notification-drawer";
-import { ThemeToggle } from "./theme-toggle";
 import { ROLE_LABELS, useRole } from "@/lib/role-context";
 import { useAuth } from "@/lib/auth-context";
 import { initials } from "@/lib/mock";
@@ -65,7 +64,6 @@ export function Topbar() {
       </div>
 
       <div className="ml-auto flex items-center gap-1">
-        <ThemeToggle />
         <NotificationDrawer />
 
         <DropdownMenu>
