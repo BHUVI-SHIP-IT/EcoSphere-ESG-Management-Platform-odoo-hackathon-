@@ -53,13 +53,16 @@ enum NotificationChannel {
 // ------------------------------
 
 model User {
-  id        String   @id @default(cuid())
-  name      String
-  email     String   @unique
-  password  String
-  role      Role     @default(EMPLOYEE)
-  xp        Int      @default(0)
-  createdAt DateTime @default(now())
+  id          String   @id @default(cuid())
+  name        String
+  email       String   @unique
+  password    String
+  role        Role     @default(EMPLOYEE)
+  xp          Int      @default(0)
+  gender      String?  // "Woman" | "Man" | "Non-binary"
+  ageBand     String?  // "Under 30" | "30-45" | "46-60" | "60+"
+  isLeadership Boolean @default(false)
+  createdAt   DateTime @default(now())
 
   departmentId String?
   department   Department? @relation(fields: [departmentId], references: [id])
@@ -71,6 +74,7 @@ model User {
   rewardRedemptions       RewardRedemption[]
   notifications           Notification[]
   xpLedger                XPLedger[]
+  trainingRecords         TrainingRecord[]
 }
 
 model Department {
@@ -275,6 +279,26 @@ model PolicyAcknowledgement {
   @@unique([userId, policyId])
 }
 
+model TrainingCourse {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+
+  records TrainingRecord[]
+}
+
+model TrainingRecord {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  courseId   String
+  course     TrainingCourse @relation(fields: [courseId], references: [id])
+  completion Int      // 0-100
+  completedAt DateTime?
+  createdAt  DateTime @default(now())
+
+  @@unique([userId, courseId])
+}
 model Audit {
   id           String   @id @default(cuid())
   departmentId String

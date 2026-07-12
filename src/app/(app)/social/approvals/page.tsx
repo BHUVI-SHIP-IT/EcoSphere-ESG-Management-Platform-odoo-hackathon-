@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -17,32 +17,79 @@ import { PageHeader } from "@/components/shared/page-header";
 import { ApprovalStatusChip } from "@/components/shared/chips";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Icon } from "@/components/icon";
-import {
-  participations as seed,
-  csrActivities,
-  userName,
-  initials,
-} from "@/lib/mock";
 import { fmtDate } from "@/lib/format";
-import type { Participation } from "@/lib/types";
 import { toast } from "sonner";
 
-function activityTitle(id: string): string {
-  return csrActivities.find((a) => a.id === id)?.title ?? "Unknown activity";
+type RealParticipation = {
+  id: string;
+  activityId: string;
+  activityTitle: string;
+  userId: string;
+  userName: string;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  proofUrl: string | null;
+  submittedAt: string;
+};
+
+function initials(name: string): string {
+  return name
+    .split(" ")
+    .map((p) => p[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
 }
-function activityEvidence(id: string): boolean {
-  return csrActivities.find((a) => a.id === id)?.evidenceRequired ?? false;
+
+// Maps real enum values to the status chip's expected mock-style strings
+function toChipStatus(status: RealParticipation["status"]): "submitted" | "under_review" | "approved" | "rejected" {
+  if (status === "APPROVED") return "approved";
+  if (status === "REJECTED") return "rejected";
+  return "submitted";
 }
 
 export default function ApprovalsPage() {
-  const [rows, setRows] = useState<Participation[]>(seed);
-  const queue = rows.filter((p) => p.status === "submitted" || p.status === "under_review");
-  const decided = rows.filter((p) => p.status === "approved" || p.status === "rejected");
+  const [rows, setRows] = useState<RealParticipation[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  function decide(id: string, status: "approved" | "rejected") {
+  useEffect(() => {
+    fetch("/api/social")
+      .then((res) => res.json())
+      .then((data) => setRows(data.participations ?? []))
+      .catch(() => setRows([]))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const queue = rows.filter((p) => p.status === "PENDING");
+  const decided = rows.filter((p) => p.status === "APPROVED" || p.status === "REJECTED");
+
+  async function decide(id: string, status: "APPROVED" | "REJECTED") {
+    // Optimistic update
     setRows((r) => r.map((p) => (p.id === id ? { ...p, status } : p)));
-    toast[status === "approved" ? "success" : "error"](
-      `Participation ${status}`,
+
+    try {
+      const res = await fetch(`/api/social/participations/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      if (!res.ok) throw new Error("Update failed");
+      toast[status === "APPROVED" ? "success" : "error"](`Participation ${status.toLowerCase()}`);
+    } catch {
+      toast.error("Failed to save decision — please retry");
+      // Revert on failure
+      setRows((r) => r.map((p) => (p.id === id ? { ...p, status: "PENDING" } : p)));
+    }
+  }
+
+  if (loading) {
+    return (
+      <>
+        <PageHeader
+          title="Approval Queue"
+          description="Review submitted proof of participation."
+        />
+        <p className="text-sm text-muted-foreground">Loading real submissions…</p>
+      </>
     );
   }
 
@@ -50,13 +97,13 @@ export default function ApprovalsPage() {
     <>
       <PageHeader
         title="Approval Queue"
-        description="Review submitted proof of participation. Evidence-required activities are locked until proof is attached."
+        description="Review submitted proof of participation. Decisions are saved to the database immediately."
       />
 
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-base">Pending review ({queue.length})</CardTitle>
-          <CardDescription>Approve or reject with a reason</CardDescription>
+          <CardDescription>Approve or reject</CardDescription>
         </CardHeader>
         <CardContent>
           {queue.length === 0 ? (
@@ -74,63 +121,54 @@ export default function ApprovalsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {queue.map((p) => {
-                  const evidenceRequired = activityEvidence(p.activityId);
-                  const locked = evidenceRequired && !p.proofUrl;
-                  return (
-                    <TableRow key={p.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Avatar className="h-7 w-7">
-                            <AvatarFallback className="bg-muted text-[10px]">
-                              {initials(userName(p.userId))}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="text-sm font-medium">{userName(p.userId)}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-sm">{activityTitle(p.activityId)}</TableCell>
-                      <TableCell>
-                        {p.proofUrl ? (
-                          <Badge variant="outline" className="gap-1">
-                            <Icon name="clipboard-check" className="h-3 w-3" /> {p.proofUrl}
-                          </Badge>
-                        ) : locked ? (
-                          <Badge className="gap-1 bg-danger/15 text-danger border-danger/30" variant="outline">
-                            Evidence required
-                          </Badge>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">—</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">{fmtDate(p.submittedAt)}</TableCell>
-                      <TableCell>
-                        <ApprovalStatusChip status={p.status} />
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex justify-end gap-1.5">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="border-success/40 text-success hover:bg-success/10"
-                            disabled={locked}
-                            onClick={() => decide(p.id, "approved")}
-                          >
-                            Approve
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="border-danger/40 text-danger hover:bg-danger/10"
-                            onClick={() => decide(p.id, "rejected")}
-                          >
-                            Reject
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
+                {queue.map((p) => (
+                  <TableRow key={p.id}>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Avatar className="h-7 w-7">
+                          <AvatarFallback className="bg-muted text-[10px]">
+                            {initials(p.userName)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="text-sm font-medium">{p.userName}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-sm">{p.activityTitle}</TableCell>
+                    <TableCell>
+                      {p.proofUrl ? (
+                        <Badge variant="outline" className="gap-1">
+                          <Icon name="clipboard-check" className="h-3 w-3" /> {p.proofUrl}
+                        </Badge>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">{fmtDate(p.submittedAt)}</TableCell>
+                    <TableCell>
+                      <ApprovalStatusChip status={toChipStatus(p.status)} />
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex justify-end gap-1.5">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="border-success/40 text-success hover:bg-success/10"
+                          onClick={() => decide(p.id, "APPROVED")}
+                        >
+                          Approve
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="border-danger/40 text-danger hover:bg-danger/10"
+                          onClick={() => decide(p.id, "REJECTED")}
+                        >
+                          Reject
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
               </TableBody>
             </Table>
           )}
@@ -148,19 +186,15 @@ export default function ApprovalsPage() {
                 <TableHead>Employee</TableHead>
                 <TableHead>Activity</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Reason</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {decided.map((p) => (
                 <TableRow key={p.id}>
-                  <TableCell className="text-sm font-medium">{userName(p.userId)}</TableCell>
-                  <TableCell className="text-sm">{activityTitle(p.activityId)}</TableCell>
+                  <TableCell className="text-sm font-medium">{p.userName}</TableCell>
+                  <TableCell className="text-sm">{p.activityTitle}</TableCell>
                   <TableCell>
-                    <ApprovalStatusChip status={p.status} />
-                  </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">
-                    {p.rejectionReason ?? "—"}
+                    <ApprovalStatusChip status={toChipStatus(p.status)} />
                   </TableCell>
                 </TableRow>
               ))}

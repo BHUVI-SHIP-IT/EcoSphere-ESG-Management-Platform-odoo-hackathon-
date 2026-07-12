@@ -80,18 +80,25 @@ export default function DashboardPage() {
   const { role } = useRole();
   const mockOrg = orgScore(defaultWeights);
   const [realEnvScore, setRealEnvScore] = useState<number | null>(null);
+  const [realSocialScore, setRealSocialScore] = useState<number | null>(null);
 
   useEffect(() => {
     fetch("/api/environmental")
       .then((res) => res.json())
       .then((data) => setRealEnvScore(data.environmentalScore))
       .catch(() => setRealEnvScore(null));
+
+    fetch("/api/social")
+      .then((res) => res.json())
+      .then((data) => setRealSocialScore(data.socialScore))
+      .catch(() => setRealSocialScore(null));
   }, []);
 
-  // Environmental score is real (from the database) once loaded; everything else is still mock.
+  // Environmental and Social scores are real (from the database) once loaded; Governance is still mock.
   const org = {
     ...mockOrg,
     environmental: realEnvScore ?? mockOrg.environmental,
+    social: realSocialScore ?? mockOrg.social,
   };
 
   const spark = scoreTrend.map((s) => s.total);

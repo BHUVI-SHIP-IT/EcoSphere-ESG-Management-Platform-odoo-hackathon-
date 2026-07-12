@@ -1,19 +1,55 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { PageHeader } from "@/components/shared/page-header";
 import { Donut, SimpleBar } from "@/components/charts/mini-charts";
-import { diversityMetrics, trainingByDept } from "@/lib/mock";
+
+type DiversityMetric = {
+  dimension: string;
+  segments: { label: string; count: number }[];
+};
+
+type TrainingByDept = { dept: string; completion: number };
 
 export default function DiversityPage() {
+  const [diversityMetrics, setDiversityMetrics] = useState<DiversityMetric[]>([]);
+  const [trainingByDept, setTrainingByDept] = useState<TrainingByDept[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/social")
+      .then((res) => res.json())
+      .then((data) => {
+        setDiversityMetrics(data.diversityMetrics ?? []);
+        setTrainingByDept(data.trainingByDept ?? []);
+      })
+      .catch(() => {
+        setDiversityMetrics([]);
+        setTrainingByDept([]);
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return (
+      <>
+        <PageHeader
+          title="Diversity & Training"
+          description="Workforce demographics and mandatory training completion across departments."
+        />
+        <p className="text-sm text-muted-foreground">Loading real workforce data…</p>
+      </>
+    );
+  }
+
   return (
     <>
       <PageHeader
         title="Diversity & Training"
         description="Workforce demographics and mandatory training completion across departments."
       />
-
       <div className="grid gap-4 lg:grid-cols-3">
         {diversityMetrics.map((m) => (
           <Card key={m.dimension}>
@@ -38,7 +74,6 @@ export default function DiversityPage() {
           </Card>
         ))}
       </div>
-
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader className="pb-2">
