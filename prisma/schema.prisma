@@ -1,0 +1,384 @@
+// EcoSphere — Phase 0 schema
+// Groups: ERP stubs | Master/config | Transactional
+// pgvector extension used for EsgDocEmbedding (RAG copilot, Phase 4)
+
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [vector]
+}
+
+// ------------------------------
+// ENUMS
+// ------------------------------
+
+enum Role {
+  ADMIN
+  ESG_MANAGER
+  DEPARTMENT_LEAD
+  EMPLOYEE
+}
+
+enum ParticipationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ComplianceSeverity {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum ComplianceStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  OVERDUE
+}
+
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+}
+
+// ------------------------------
+// MASTER / CONFIG
+// ------------------------------
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      Role     @default(EMPLOYEE)
+  xp        Int      @default(0)
+  createdAt DateTime @default(now())
+
+  departmentId String?
+  department   Department? @relation(fields: [departmentId], references: [id])
+
+  participations         Participation[]
+  policyAcknowledgements  PolicyAcknowledgement[]
+  complianceIssuesOwned   ComplianceIssue[]
+  badgeAwards             BadgeAward[]
+  rewardRedemptions       RewardRedemption[]
+  notifications           Notification[]
+  xpLedger                XPLedger[]
+}
+
+model Department {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+
+  users              User[]
+  purchases          Purchase[]
+  manufacturingRuns  Manufacturing[]
+  expenses           Expense[]
+  fleetRecords       Fleet[]
+  carbonTransactions CarbonTransaction[]
+  csrActivities      CSRActivity[]
+  complianceIssues   ComplianceIssue[]
+  audits             Audit[]
+  goals              Goal[]
+  scoreSnapshots     ScoreSnapshot[]
+}
+
+model Category {
+  id     String @id @default(cuid())
+  name   String @unique
+
+  emissionFactors EmissionFactor[]
+  purchases       Purchase[]
+  manufacturing   Manufacturing[]
+  expenses        Expense[]
+  fleetRecords    Fleet[]
+}
+
+model EmissionFactor {
+  id          String   @id @default(cuid())
+  categoryId  String
+  category    Category @relation(fields: [categoryId], references: [id])
+  factor      Float    // e.g. kg CO2e per unit
+  unit        String   // e.g. "per liter", "per kWh", "per kg"
+  effectiveAt DateTime @default(now())
+
+  carbonTransactions CarbonTransaction[]
+}
+
+model ProductESGProfile {
+  id           String @id @default(cuid())
+  productName  String
+  esgNotes     String?
+}
+
+model Goal {
+  id           String   @id @default(cuid())
+  departmentId String
+  department   Department @relation(fields: [departmentId], references: [id])
+  title        String
+  targetValue  Float
+  currentValue Float    @default(0)
+  dueDate      DateTime
+}
+
+model Policy {
+  id          String   @id @default(cuid())
+  title       String
+  body        String
+  publishedAt DateTime @default(now())
+
+  acknowledgements PolicyAcknowledgement[]
+  embeddings       EsgDocEmbedding[]
+}
+
+model Badge {
+  id         String @id @default(cuid())
+  name       String @unique
+  unlockRule String // e.g. "xp>=500" or "challenges_completed>=5" — parsed at award time
+
+  awards BadgeAward[]
+}
+
+model Reward {
+  id        String @id @default(cuid())
+  name      String
+  xpCost    Int
+
+  redemptions RewardRedemption[]
+}
+
+model ScoreWeightConfig {
+  id               String   @id @default(cuid())
+  environmentalPct Float    @default(0.40)
+  socialPct        Float    @default(0.30)
+  governancePct    Float    @default(0.30)
+  updatedAt        DateTime @updatedAt
+}
+
+// ------------------------------
+// ERP STUBS (seeded, self-contained)
+// ------------------------------
+
+model Purchase {
+  id           String   @id @default(cuid())
+  departmentId String
+  department   Department @relation(fields: [departmentId], references: [id])
+  categoryId   String
+  category     Category   @relation(fields: [categoryId], references: [id])
+  quantity     Float
+  amount       Float
+  date         DateTime @default(now())
+
+  carbonTransaction CarbonTransaction?
+}
+
+model Manufacturing {
+  id           String   @id @default(cuid())
+  departmentId String
+  department   Department @relation(fields: [departmentId], references: [id])
+  categoryId   String
+  category     Category   @relation(fields: [categoryId], references: [id])
+  quantity     Float
+  date         DateTime @default(now())
+
+  carbonTransaction CarbonTransaction?
+}
+
+model Expense {
+  id           String   @id @default(cuid())
+  departmentId String
+  department   Department @relation(fields: [departmentId], references: [id])
+  categoryId   String
+  category     Category   @relation(fields: [categoryId], references: [id])
+  amount       Float
+  date         DateTime @default(now())
+
+  carbonTransaction CarbonTransaction?
+}
+
+model Fleet {
+  id           String   @id @default(cuid())
+  departmentId String
+  department   Department @relation(fields: [departmentId], references: [id])
+  categoryId   String
+  category     Category   @relation(fields: [categoryId], references: [id])
+  litersUsed   Float
+  date         DateTime @default(now())
+
+  carbonTransaction CarbonTransaction?
+}
+
+// ------------------------------
+// TRANSACTIONAL
+// ------------------------------
+
+model CarbonTransaction {
+  id               String   @id @default(cuid())
+  departmentId     String
+  department       Department @relation(fields: [departmentId], references: [id])
+  emissionFactorId String
+  emissionFactor   EmissionFactor @relation(fields: [emissionFactorId], references: [id])
+
+  purchaseId      String?  @unique
+  purchase        Purchase?      @relation(fields: [purchaseId], references: [id])
+  manufacturingId String?  @unique
+  manufacturing   Manufacturing? @relation(fields: [manufacturingId], references: [id])
+  expenseId       String?  @unique
+  expense         Expense?       @relation(fields: [expenseId], references: [id])
+  fleetId         String?  @unique
+  fleet           Fleet?         @relation(fields: [fleetId], references: [id])
+
+  co2eKg        Float
+  autoCalculated Boolean  @default(true)
+  anomalyFlag    Boolean  @default(false)
+  createdAt      DateTime @default(now())
+}
+
+model CSRActivity {
+  id           String   @id @default(cuid())
+  departmentId String
+  department   Department @relation(fields: [departmentId], references: [id])
+  title        String
+  description  String?
+  createdAt    DateTime @default(now())
+
+  participations Participation[]
+}
+
+model Participation {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  csrActivityId String
+  csrActivity   CSRActivity @relation(fields: [csrActivityId], references: [id])
+  proofUrl      String?
+  status        ParticipationStatus @default(PENDING)
+  createdAt     DateTime @default(now())
+}
+
+model PolicyAcknowledgement {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  policyId      String
+  policy        Policy   @relation(fields: [policyId], references: [id])
+  acknowledgedAt DateTime @default(now())
+
+  @@unique([userId, policyId])
+}
+
+model Audit {
+  id           String   @id @default(cuid())
+  departmentId String
+  department   Department @relation(fields: [departmentId], references: [id])
+  title        String
+  findings     String
+  createdAt    DateTime @default(now())
+
+  embeddings EsgDocEmbedding[]
+}
+
+model ComplianceIssue {
+  id           String   @id @default(cuid())
+  departmentId String
+  department   Department @relation(fields: [departmentId], references: [id])
+  ownerId      String
+  owner        User     @relation(fields: [ownerId], references: [id])
+  title        String
+  description  String
+  severity     ComplianceSeverity @default(MEDIUM)
+  status       ComplianceStatus   @default(OPEN)
+  dueDate      DateTime
+  createdAt    DateTime @default(now())
+
+  embeddings EsgDocEmbedding[]
+}
+
+model Challenge {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  xpReward    Int      @default(0)
+  startsAt    DateTime
+  endsAt      DateTime
+
+  xpLedgerEntries XPLedger[]
+}
+
+model XPLedger {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  challengeId String?
+  challenge   Challenge? @relation(fields: [challengeId], references: [id])
+  amount      Int
+  reason      String
+  createdAt   DateTime @default(now())
+}
+
+model BadgeAward {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  badgeId   String
+  badge     Badge    @relation(fields: [badgeId], references: [id])
+  awardedAt DateTime @default(now())
+
+  @@unique([userId, badgeId])
+}
+
+model RewardRedemption {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  rewardId    String
+  reward      Reward   @relation(fields: [rewardId], references: [id])
+  redeemedAt  DateTime @default(now())
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  channel   NotificationChannel @default(IN_APP)
+  title     String
+  body      String
+  isDigest  Boolean  @default(false)
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model ScoreSnapshot {
+  id                String   @id @default(cuid())
+  departmentId      String
+  department        Department @relation(fields: [departmentId], references: [id])
+  environmentalScore Float
+  socialScore        Float
+  governanceScore     Float
+  totalScore          Float
+  weightsUsed         Json     // snapshot of ScoreWeightConfig at calc time
+  createdAt            DateTime @default(now())
+}
+
+// pgvector-backed embeddings for the RAG Compliance Copilot (Phase 4)
+model EsgDocEmbedding {
+  id                String   @id @default(cuid())
+  sourceType        String   // "POLICY" | "AUDIT" | "COMPLIANCE_ISSUE"
+  policyId          String?
+  policy            Policy?  @relation(fields: [policyId], references: [id])
+  auditId           String?
+  audit             Audit?   @relation(fields: [auditId], references: [id])
+  complianceIssueId String?
+  complianceIssue   ComplianceIssue? @relation(fields: [complianceIssueId], references: [id])
+  content           String
+  embedding         Unsupported("vector(1536)")
+  createdAt         DateTime @default(now())
+}

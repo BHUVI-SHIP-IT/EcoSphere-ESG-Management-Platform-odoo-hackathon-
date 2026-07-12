@@ -1,0 +1,50 @@
+version: "3.9"
+
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: ecosphere_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ecosphere
+      POSTGRES_PASSWORD: ecosphere
+      POSTGRES_DB: ecosphere
+    ports:
+      - "5432:5432"
+    volumes:
+      - ecosphere_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ecosphere"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: ecosphere_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ecosphere_app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    env_file:
+      - .env
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    command: sh -c "npx prisma migrate deploy && npm run dev"
+
+volumes:
+  ecosphere_pgdata:
