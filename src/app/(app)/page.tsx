@@ -52,7 +52,7 @@ const quickActions: Record<Role, { label: string; icon: string; href: string }[]
 };
 
 import { motion } from "framer-motion";
-
+import { useEffect, useState } from "react";
 const containerVariants = {
   hidden: { opacity: 0 },
   show: {
@@ -78,10 +78,24 @@ const cardVariants: Variants = {
 };
 export default function DashboardPage() {
   const { role } = useRole();
-  const org = orgScore(defaultWeights);
+  const mockOrg = orgScore(defaultWeights);
+  const [realEnvScore, setRealEnvScore] = useState<number | null>(null);
+
+  useEffect(() => {
+    fetch("/api/environmental")
+      .then((res) => res.json())
+      .then((data) => setRealEnvScore(data.environmentalScore))
+      .catch(() => setRealEnvScore(null));
+  }, []);
+
+  // Environmental score is real (from the database) once loaded; everything else is still mock.
+  const org = {
+    ...mockOrg,
+    environmental: realEnvScore ?? mockOrg.environmental,
+  };
+
   const spark = scoreTrend.map((s) => s.total);
   const delta = org.total - scoreTrend[0].total;
-
   return (
     <motion.div
       variants={containerVariants}
