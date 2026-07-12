@@ -19,7 +19,7 @@ EcoSphere solves this by embedding ESG directly into the organisational workflow
 
 ## Live Demo
 
-> **URL:** _[coming soon — deploy in progress]_
+> **URL:** [https://ecosphere-sigma-three.vercel.app](https://ecosphere-sigma-three.vercel.app)
 >
 > **Demo credentials:**
 > | Role | Email | Password |
