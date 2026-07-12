@@ -33,15 +33,47 @@ function CitationCard({ c }: { c: CopilotCitation }) {
 export default function CopilotPage() {
   const [messages, setMessages] = useState<CopilotMessage[]>([]);
   const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  function ask(q: string) {
-    if (!q.trim()) return;
-    const userMsg: CopilotMessage = { id: `u-${messages.length}`, role: "user", content: q };
-    // Demo: echo the canned grounded answer for any question.
-    const answer = copilotSample[1];
-    const assistantMsg: CopilotMessage = { ...answer, id: `a-${messages.length}` };
-    setMessages((m) => [...m, userMsg, assistantMsg]);
+  async function ask(q: string) {
+    if (!q.trim() || loading) return;
+    
+    const userMsg: CopilotMessage = { id: `u-${messages.length}-${Date.now()}`, role: "user", content: q };
+    setMessages((m) => [...m, userMsg]);
     setInput("");
+    setLoading(true);
+
+    try {
+      const res = await fetch("/api/copilot", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question: q }),
+      });
+
+      if (!res.ok) {
+        throw new Error(await res.text());
+      }
+
+      const answer = await res.json();
+      const assistantMsg: CopilotMessage = {
+        id: `a-${messages.length}-${Date.now()}`,
+        role: "assistant",
+        content: answer.content,
+        citations: answer.citations,
+      };
+      
+      setMessages((m) => [...m, assistantMsg]);
+    } catch (err: any) {
+      console.error(err);
+      const errorMsg: CopilotMessage = {
+        id: `err-${messages.length}`,
+        role: "assistant",
+        content: "Sorry, I encountered an error while processing your request. Please check that your database is available and that the API key is configured.",
+      };
+      setMessages((m) => [...m, errorMsg]);
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -67,7 +99,8 @@ export default function CopilotPage() {
                   <button
                     key={s}
                     onClick={() => ask(s)}
-                    className="rounded-full border bg-card px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+                    disabled={loading}
+                    className="rounded-full border bg-card px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:opacity-50"
                   >
                     {s}
                   </button>
@@ -75,41 +108,56 @@ export default function CopilotPage() {
               </div>
             </div>
           ) : (
-            messages.map((m) => (
-              <div key={m.id} className={cn("flex gap-3", m.role === "user" && "justify-end")}>
-                {m.role === "assistant" && (
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/12 text-primary">
+            <div className="space-y-4">
+              {messages.map((m) => (
+                <div key={m.id} className={cn("flex gap-3", m.role === "user" && "justify-end")}>
+                  {m.role === "assistant" && (
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/12 text-primary">
+                      <Icon name="sparkles" className="h-4 w-4" />
+                    </span>
+                  )}
+                  <div className={cn("max-w-[80%] space-y-2", m.role === "user" && "order-first")}>
+                    <div
+                      className={cn(
+                        "rounded-2xl px-4 py-2.5 text-sm leading-relaxed",
+                        m.role === "user"
+                          ? "bg-[var(--accent)] text-[#0a0f0d] font-medium"
+                          : "border border-[var(--border)] bg-[var(--bg-card)]",
+                      )}
+                    >
+                      <p className="whitespace-pre-line">{m.content}</p>
+                    </div>
+                    {m.citations && m.citations.length > 0 && (
+                      <div className="space-y-1.5">
+                        <p className="text-[11px] font-medium text-muted-foreground">Sources</p>
+                        <div className="grid gap-1.5 sm:grid-cols-2">
+                          {m.citations.map((c, idx) => (
+                            <CitationCard key={idx} c={c} />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+
+              {loading && (
+                <div className="flex gap-3">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/12 text-primary animate-pulse">
                     <Icon name="sparkles" className="h-4 w-4" />
                   </span>
-                )}
-                <div className={cn("max-w-[80%] space-y-2", m.role === "user" && "order-first")}>
-                  <div
-                    className={cn(
-                      "rounded-2xl px-4 py-2.5 text-sm leading-relaxed",
-                      m.role === "user"
-                        ? "bg-primary text-primary-foreground"
-                        : "border bg-card",
-                    )}
-                  >
-                    <p className="whitespace-pre-line">{m.content}</p>
+                  <div className="border border-[var(--border)] bg-[var(--bg-card)] rounded-2xl px-4 py-2.5 text-sm text-muted-foreground flex items-center gap-1">
+                    <span className="h-2 w-2 rounded-full bg-[var(--accent)] animate-bounce" style={{ animationDelay: "0ms" }} />
+                    <span className="h-2 w-2 rounded-full bg-[var(--accent)] animate-bounce" style={{ animationDelay: "150ms" }} />
+                    <span className="h-2 w-2 rounded-full bg-[var(--accent)] animate-bounce" style={{ animationDelay: "300ms" }} />
                   </div>
-                  {m.citations && (
-                    <div className="space-y-1.5">
-                      <p className="text-[11px] font-medium text-muted-foreground">Sources</p>
-                      <div className="grid gap-1.5 sm:grid-cols-2">
-                        {m.citations.map((c) => (
-                          <CitationCard key={c.recordId} c={c} />
-                        ))}
-                      </div>
-                    </div>
-                  )}
                 </div>
-              </div>
-            ))
+              )}
+            </div>
           )}
         </CardContent>
 
-        <div className="border-t p-3">
+        <div className="border-t border-[var(--border)] p-3">
           <form
             className="flex gap-2"
             onSubmit={(e) => {
@@ -121,13 +169,15 @@ export default function CopilotPage() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="Ask about policies, audits, compliance issues…"
+              disabled={loading}
+              className="border-[var(--border)] bg-[var(--bg-card)] text-sm"
             />
-            <Button type="submit" disabled={!input.trim()}>
-              <Icon name="sparkles" className="h-4 w-4" /> Ask
+            <Button type="submit" disabled={!input.trim() || loading}>
+              <Icon name="sparkles" className="h-4 w-4" /> {loading ? "Thinking..." : "Ask"}
             </Button>
           </form>
           <p className="mt-1.5 px-1 text-[11px] text-muted-foreground">
-            Demo mode — wired to NVIDIA embed → rerank → LLM over pgvector when the backend lands.
+            Compliance RAG grounded directly in live database policies, audits, and compliance records.
           </p>
         </div>
       </Card>
