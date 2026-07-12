@@ -10,14 +10,22 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Icon } from "@/components/icon";
 import { ThemeToggle } from "@/components/shell/theme-toggle";
-import { useAuth, DEMO_PASSWORD } from "@/lib/auth-context";
+import { useAuth } from "@/lib/auth-context";
 import { ROLE_LABELS } from "@/lib/role-context";
-import { users, initials } from "@/lib/mock";
+import { initials } from "@/lib/mock";
 import type { Role } from "@/lib/types";
 import { toast } from "sonner";
 
+// Real seeded accounts in the database — matches prisma/seed.ts
+const realDemoUsers: { email: string; name: string; role: Role }[] = [
+  { email: "admin@ecosphere.test", name: "Admin User", role: "admin" },
+  { email: "esg_manager@ecosphere.test", name: "ESG Manager User", role: "esg_manager" },
+  { email: "department_lead@ecosphere.test", name: "Department Lead User", role: "auditor" },
+  { email: "employee@ecosphere.test", name: "Employee User", role: "employee" },
+];
+const DEMO_PASSWORD = "password123";
+
 // One representative demo account per role for quick sign-in.
-const demoAccounts: Role[] = ["admin", "esg_manager", "employee", "auditor"];
 
 export default function LoginPage() {
   const { status, login } = useAuth();
@@ -31,11 +39,11 @@ export default function LoginPage() {
     if (status === "authenticated") router.replace("/");
   }, [status, router]);
 
-  function submit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
     setSubmitting(true);
     setError(null);
-    const res = login(email, password);
+    const res = await login(email, password);
     if (res.ok) {
       toast.success("Welcome back");
       router.replace("/");
@@ -45,14 +53,11 @@ export default function LoginPage() {
     }
   }
 
-  function fillDemo(role: Role) {
-    const u = users.find((x) => x.role === role);
-    if (u) {
-      setEmail(u.email);
-      setPassword(DEMO_PASSWORD);
-      setError(null);
-    }
-  }
+  function fillDemo(u: { email: string }) {
+  setEmail(u.email);
+  setPassword(DEMO_PASSWORD);
+  setError(null);
+}
 
   return (
     <div className="relative flex min-h-screen">
@@ -149,27 +154,24 @@ export default function LoginPage() {
               <span className="h-px flex-1 bg-border" />
             </div>
             <div className="mt-3 grid grid-cols-2 gap-2">
-              {demoAccounts.map((role) => {
-                const u = users.find((x) => x.role === role)!;
-                return (
-                  <button
-                    key={role}
-                    type="button"
-                    onClick={() => fillDemo(role)}
-                    className="flex items-center gap-2 rounded-lg border p-2 text-left transition-colors hover:bg-accent hover:text-accent-foreground"
-                  >
-                    <Avatar className="h-7 w-7">
-                      <AvatarFallback className="bg-primary/15 text-primary text-[10px]">
-                        {initials(u.name)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="min-w-0">
-                      <p className="truncate text-xs font-medium">{u.name}</p>
-                      <p className="truncate text-[10px] text-muted-foreground">{ROLE_LABELS[role]}</p>
-                    </div>
-                  </button>
-                );
-              })}
+              {realDemoUsers.map((u) => (
+                <button
+                  key={u.email}
+                  type="button"
+                  onClick={() => fillDemo(u)}
+                  className="flex items-center gap-2 rounded-lg border p-2 text-left transition-colors hover:bg-accent hover:text-accent-foreground"
+                >
+                  <Avatar className="h-7 w-7">
+                    <AvatarFallback className="bg-primary/15 text-primary text-[10px]">
+                      {initials(u.name)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0">
+                    <p className="truncate text-xs font-medium">{u.name}</p>
+                    <p className="truncate text-[10px] text-muted-foreground">{ROLE_LABELS[u.role]}</p>
+                  </div>
+                </button>
+              ))}
             </div>
             <p className="mt-3 text-center text-[11px] text-muted-foreground">
               Click an account to autofill, then Sign in. Password:{" "}

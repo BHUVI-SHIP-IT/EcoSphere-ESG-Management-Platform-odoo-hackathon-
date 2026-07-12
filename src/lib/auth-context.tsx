@@ -1,19 +1,27 @@
 "use client";
-
 import { createContext, useContext, useEffect, useState } from "react";
-import { users } from "@/lib/mock";
-import type { User } from "@/lib/types";
+import { toast } from "sonner";
+import type { User, Role } from "@/lib/types";
 
-const STORAGE_KEY = "ecosphere.session";
-// Demo mock — any of the seeded accounts log in with this shared password.
-const DEMO_PASSWORD = "ecosphere";
+function mapDbRole(dbRole: string): Role {
+  switch (dbRole) {
+    case "ADMIN":
+      return "admin";
+    case "ESG_MANAGER":
+      return "esg_manager";
+    case "DEPARTMENT_LEAD":
+      return "auditor";
+    case "EMPLOYEE":
+    default:
+      return "employee";
+  }
+}
 
 interface AuthContextValue {
   user: User | null;
   status: "loading" | "authenticated" | "unauthenticated";
-  login: (email: string, password: string) => { ok: boolean; error?: string };
+  login: (email: string, password: string) => Promise<{ ok: boolean; error?: string }>;
   logout: () => void;
-  /** Demo helper: switch the active account (used by the role viewer). */
   switchUser: (userId: string) => void;
 }
 
@@ -23,48 +31,61 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [status, setStatus] = useState<AuthContextValue["status"]>("loading");
 
-  useEffect(() => {
+  async function refreshSession() {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const id = JSON.parse(raw) as string;
-        const found = users.find((u) => u.id === id) ?? null;
-        setUser(found);
-        setStatus(found ? "authenticated" : "unauthenticated");
-        return;
+      const res = await fetch("/api/auth/me");
+      const data = await res.json();
+      if (data.user) {
+        setUser({
+          id: data.user.id,
+          name: data.user.name,
+          email: data.user.email,
+          role: mapDbRole(data.user.role),
+          departmentId: data.user.departmentId ?? "",
+          xp: data.user.xp ?? 0,
+          level: 1,
+        });
+        setStatus("authenticated");
+      } else {
+        setUser(null);
+        setStatus("unauthenticated");
       }
     } catch {
-      // ignore corrupt storage
+      setUser(null);
+      setStatus("unauthenticated");
     }
-    setStatus("unauthenticated");
+  }
+
+  useEffect(() => {
+    refreshSession();
   }, []);
 
-  function persist(u: User | null) {
-    setUser(u);
-    setStatus(u ? "authenticated" : "unauthenticated");
+  async function login(email: string, password: string) {
     try {
-      if (u) localStorage.setItem(STORAGE_KEY, JSON.stringify(u.id));
-      else localStorage.removeItem(STORAGE_KEY);
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        return { ok: false, error: data.error ?? "Login failed" };
+      }
+      await refreshSession();
+      return { ok: true };
     } catch {
-      // ignore
+      return { ok: false, error: "Network error. Please try again." };
     }
   }
 
-  function login(email: string, password: string) {
-    const found = users.find((u) => u.email.toLowerCase() === email.trim().toLowerCase());
-    if (!found) return { ok: false, error: "No account found for that email." };
-    if (password !== DEMO_PASSWORD) return { ok: false, error: "Incorrect password." };
-    persist(found);
-    return { ok: true };
+  async function logout() {
+    await fetch("/api/auth/logout", { method: "POST" });
+    setUser(null);
+    setStatus("unauthenticated");
   }
 
-  function logout() {
-    persist(null);
-  }
-
-  function switchUser(userId: string) {
-    const found = users.find((u) => u.id === userId);
-    if (found) persist(found);
+  function switchUser(_userId: string) {
+    toast.error("Switching accounts isn't available with real sign-in. Please log out and sign in as that user.");
   }
 
   return (
@@ -80,4 +101,4 @@ export function useAuth() {
   return ctx;
 }
 
-export { DEMO_PASSWORD };
+export const DEMO_PASSWORD = "password123";

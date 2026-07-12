@@ -63,7 +63,9 @@ const containerVariants = {
   },
 };
 
-const cardVariants = {
+import type { Variants } from "framer-motion";
+
+const cardVariants: Variants = {
   hidden: { opacity: 0, y: 16 },
   show: {
     opacity: 1,
@@ -74,7 +76,6 @@ const cardVariants = {
     },
   },
 };
-
 export default function DashboardPage() {
   const { role } = useRole();
   const org = orgScore(defaultWeights);
