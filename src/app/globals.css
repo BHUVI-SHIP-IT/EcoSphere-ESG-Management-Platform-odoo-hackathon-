@@ -1,0 +1,184 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-sans);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-danger: var(--danger);
+  --color-danger-foreground: var(--danger-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+}
+
+:root {
+  --bg-base:        #0a0f0d;
+  --bg-card:        #0f1f16;
+  --bg-card-hover:  #1a2e22;
+  --border:         #1f3829;
+  --border-glow:    #39ff8a22;
+  --accent:         #39ff8a;
+  --accent-dim:     #39ff8a66;
+  --text-primary:   #e8f0eb;
+  --text-secondary: #7a9985;
+  --text-data:      #39ff8a;
+  --danger:         #ff4d4d;
+  --warning:        #f5a623;
+
+  /* Map standard variables to our custom variables */
+  --background: var(--bg-base);
+  --foreground: var(--text-primary);
+  --card: var(--bg-card);
+  --card-foreground: var(--text-primary);
+  --popover: var(--bg-card);
+  --popover-foreground: var(--text-primary);
+  --primary: var(--accent);
+  --primary-foreground: var(--bg-base);
+  --secondary: var(--border);
+  --secondary-foreground: var(--text-secondary);
+  --muted: #0d1612;
+  --muted-foreground: var(--text-secondary);
+  --accent-foreground: var(--bg-base);
+  --destructive: var(--danger);
+  --destructive-foreground: #ffffff;
+  --border: #1f3829;
+  --input: #1f3829;
+  --ring: var(--accent);
+  --radius: 4px; /* razor sharp */
+
+  --success: var(--accent);
+  --success-foreground: var(--bg-base);
+  --warning-foreground: var(--bg-base);
+  --danger-foreground: #ffffff;
+
+  --sidebar: #080d0a;
+  --sidebar-foreground: var(--text-secondary);
+  --sidebar-primary: var(--accent);
+  --sidebar-primary-foreground: var(--bg-base);
+  --sidebar-accent: #39ff8a08;
+  --sidebar-accent-foreground: var(--text-primary);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--accent);
+
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dark {
+  /* Keep same dark values for both to enforce default dark mode colors */
+  --background: var(--bg-base);
+  --foreground: var(--text-primary);
+  --card: var(--bg-card);
+  --card-foreground: var(--text-primary);
+  --border: #1f3829;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    background-image: radial-gradient(circle, #39ff8a0d 1px, transparent 1px);
+    background-size: 24px 24px;
+    font-family: var(--font-sans), sans-serif;
+  }
+  html {
+    @apply font-sans;
+  }
+  h1, h2, h3, h4, h5, h6, .font-heading {
+    font-family: var(--font-display), sans-serif;
+    font-weight: 600;
+  }
+  .tabular-nums, .font-mono, [data-slot="table-body"] td.tabular-nums, [data-slot="table-body"] td:has(.tabular-nums) {
+    font-family: var(--font-mono), monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Table styling matching spec */
+  [data-slot="table-body"] tr:nth-child(odd) {
+    background-color: #0f1f16;
+  }
+  [data-slot="table-body"] tr:nth-child(even) {
+    background-color: #0d1a13;
+  }
+  [data-slot="table-header"] th {
+    font-family: var(--font-sans), sans-serif;
+    font-weight: 500;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  [data-slot="table-body"] tr {
+    transition: background-color 150ms var(--ease);
+  }
+  [data-slot="table-body"] tr:hover {
+    background-color: #39ff8a08 !important;
+  }
+
+  /* Sonner Toast style overrides */
+  .cn-toast {
+    border-radius: 4px !important;
+    background-color: var(--bg-card) !important;
+    border: 1px solid var(--border) !important;
+    color: var(--text-primary) !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5) !important;
+    font-family: var(--font-sans), sans-serif !important;
+    transition: transform 300ms var(--ease), opacity 300ms var(--ease) !important;
+  }
+
+  .cn-toast[data-type="success"],
+  .cn-toast[data-type="info"],
+  .cn-toast:not([data-type="error"]):not([data-type="warning"]) {
+    border-left: 3px solid var(--accent) !important;
+  }
+
+  .cn-toast[data-type="error"],
+  .cn-toast[data-type="warning"] {
+    border-left: 3px solid var(--danger) !important;
+  }
+}
