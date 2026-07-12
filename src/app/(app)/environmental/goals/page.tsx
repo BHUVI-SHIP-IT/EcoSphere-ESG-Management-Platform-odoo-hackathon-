@@ -3,7 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
+import { SegmentedProgress } from "@/components/ui/segmented-progress";
 import { PageHeader } from "@/components/shared/page-header";
 import { Icon } from "@/components/icon";
 import { goals, deptName } from "@/lib/mock";
@@ -69,7 +69,7 @@ export default function GoalsPage() {
                     target <span className="font-medium text-foreground">{g.target} {g.unit}</span>
                   </div>
                 </div>
-                <Progress value={pct} className="h-2" />
+                <SegmentedProgress value={pct} segments={10} className="h-2 mt-2" />
                 <p className="text-xs text-muted-foreground">
                   {g.direction === "reduce" ? "Reduction" : "Progress"}: {pct}% · metric: {g.metric}
                 </p>

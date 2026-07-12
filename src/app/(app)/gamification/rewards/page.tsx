@@ -25,6 +25,7 @@ import { useRole } from "@/lib/role-context";
 import type { Reward } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { motion } from "framer-motion";
 
 function ruleText(r: (typeof badges)[number]["unlockRule"]): string {
   const metric = {

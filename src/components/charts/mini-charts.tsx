@@ -15,6 +15,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { motion } from "framer-motion";
 
 const CHART_COLORS = [
   "var(--chart-1)",
@@ -87,8 +88,8 @@ export function SimpleBar({
   xKey,
   barKey,
   height = 260,
-  color = "var(--chart-1)",
-  horizontal = false,
+  color = "var(--accent)",
+  horizontal = true,
 }: {
   data: Record<string, number | string>[];
   xKey: string;
@@ -97,28 +98,39 @@ export function SimpleBar({
   color?: string;
   horizontal?: boolean;
 }) {
+  const maxVal = Math.max(...data.map((item) => Number(item[barKey]) || 1));
+
   return (
-    <ResponsiveContainer width="100%" height={height}>
-      <BarChart
-        data={data}
-        layout={horizontal ? "vertical" : "horizontal"}
-        margin={{ top: 8, right: 12, left: horizontal ? 20 : -10, bottom: 0 }}
-      >
-        {horizontal ? (
-          <>
-            <XAxis type="number" tick={{ fontSize: 12, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} />
-            <YAxis type="category" dataKey={xKey} tick={{ fontSize: 12, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} width={110} />
-          </>
-        ) : (
-          <>
-            <XAxis dataKey={xKey} tick={{ fontSize: 12, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fontSize: 12, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} width={40} />
-          </>
-        )}
-        <Tooltip contentStyle={tooltipStyle} cursor={{ fill: "var(--muted)", opacity: 0.4 }} />
-        <Bar dataKey={barKey} fill={color} radius={horizontal ? [0, 6, 6, 0] : [6, 6, 0, 0]} maxBarSize={44} />
-      </BarChart>
-    </ResponsiveContainer>
+    <div className="flex flex-col gap-4 py-2" style={{ minHeight: height }}>
+      {data.map((item, idx) => {
+        const value = Number(item[barKey]) || 0;
+        const name = String(item[xKey]);
+        const percentOfMax = (value / maxVal) * 100;
+
+        return (
+          <div key={name} className="flex items-center gap-4 text-xs">
+            <span className="w-24 text-[var(--text-secondary)] font-medium truncate text-left">
+              {name}
+            </span>
+            <div className="flex-1 bg-[var(--border)] h-6 rounded-[2px] overflow-hidden relative">
+              <motion.div
+                className="absolute inset-y-0 left-0 bg-[var(--accent)]/70 hover:bg-[var(--accent)] cursor-pointer transition-colors duration-150 rounded-[2px] shadow-[0_0_12px_rgba(57,255,138,0.1)]"
+                initial={{ width: 0 }}
+                animate={{ width: `${percentOfMax}%` }}
+                transition={{
+                  duration: 0.6,
+                  ease: [0.16, 1, 0.3, 1],
+                  delay: idx * 0.08, // stagger 80ms per bar
+                }}
+              />
+            </div>
+            <span className="w-12 text-right font-mono font-bold text-[var(--accent)] tabular-nums">
+              {value}%
+            </span>
+          </div>
+        );
+      })}
+    </div>
   );
 }
 
