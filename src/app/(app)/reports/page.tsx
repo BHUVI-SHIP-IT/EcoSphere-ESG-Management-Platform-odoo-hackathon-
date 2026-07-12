@@ -29,6 +29,8 @@ import {
 } from "@/components/ui/dialog";
 import { PageHeader } from "@/components/shared/page-header";
 import { Icon } from "@/components/icon";
+import { FilterChips } from "@/components/ui/filter-chips";
+import { ExportButton } from "@/components/ui/export-button";
 import { departments, orgSnapshot, deptName } from "@/lib/mock";
 import { scoreColor } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -45,6 +47,7 @@ const modules = ["Environmental", "Social", "Governance", "Gamification"];
 
 export default function ReportsPage() {
   const [drill, setDrill] = useState<string | null>(null);
+  const [dateRange, setDateRange] = useState("q3");
   const snap = orgSnapshot;
 
   return (
@@ -77,41 +80,45 @@ export default function ReportsPage() {
             <CardDescription>Filter the preview, then export</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="space-y-4">
               <div>
-                <label className="mb-1 block text-xs font-medium text-muted-foreground">Department</label>
-                <Select defaultValue="all">
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All departments</SelectItem>
-                    {departments.map((d) => (
-                      <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <label className="mb-2 block text-xs font-medium text-muted-foreground">Date range</label>
+                <FilterChips
+                  options={[
+                    { value: "q3", label: "This quarter" },
+                    { value: "ytd", label: "Year to date" },
+                    { value: "12m", label: "Last 12 months" },
+                  ]}
+                  selected={dateRange}
+                  onChange={setDateRange}
+                />
               </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-muted-foreground">Date range</label>
-                <Select defaultValue="q3">
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="q3">This quarter</SelectItem>
-                    <SelectItem value="ytd">Year to date</SelectItem>
-                    <SelectItem value="12m">Last 12 months</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-muted-foreground">Category</label>
-                <Select defaultValue="all">
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All categories</SelectItem>
-                    <SelectItem value="e">Environmental</SelectItem>
-                    <SelectItem value="s">Social</SelectItem>
-                    <SelectItem value="g">Governance</SelectItem>
-                  </SelectContent>
-                </Select>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-muted-foreground">Department</label>
+                  <Select defaultValue="all">
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All departments</SelectItem>
+                      {departments.map((d) => (
+                        <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-muted-foreground">Category</label>
+                  <Select defaultValue="all">
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All categories</SelectItem>
+                      <SelectItem value="e">Environmental</SelectItem>
+                      <SelectItem value="s">Social</SelectItem>
+                      <SelectItem value="g">Governance</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
 
@@ -160,11 +167,15 @@ export default function ReportsPage() {
               </Table>
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex gap-3">
               {["PDF", "Excel", "CSV"].map((f) => (
-                <Button key={f} variant="outline" onClick={() => toast.success(`Exported as ${f}`)}>
-                  <Icon name="bar-chart-3" className="h-4 w-4" /> {f}
-                </Button>
+                <ExportButton
+                  key={f}
+                  format={f}
+                  onExport={() => {
+                    toast.success(`Exported reports as ${f}`);
+                  }}
+                />
               ))}
             </div>
           </CardContent>
