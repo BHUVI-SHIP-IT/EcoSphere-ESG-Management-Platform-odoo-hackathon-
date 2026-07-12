@@ -66,27 +66,76 @@ export default function RewardsPage() {
             {badges.map((b) => (
               <Tooltip key={b.id}>
                 <TooltipTrigger asChild>
-                  <Card className={cn("text-center transition-all", !b.unlocked && "opacity-55 grayscale")}>
-                    <CardContent className="flex flex-col items-center gap-2 p-5">
-                      <span
-                        className={cn(
-                          "flex h-14 w-14 items-center justify-center rounded-2xl",
-                          b.unlocked ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground",
-                        )}
-                      >
-                        <Icon name={b.iconKey} className="h-7 w-7" />
-                      </span>
-                      <p className="text-sm font-semibold">{b.name}</p>
-                      <p className="text-xs text-muted-foreground">{b.description}</p>
-                      {b.unlocked ? (
-                        <Badge variant="outline" className="border-success/30 text-success text-[10px]">
-                          Unlocked
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="text-[10px]">Locked</Badge>
+                  <motion.div
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                  >
+                    <Card
+                      className={cn(
+                        "text-center transition-all duration-300 relative overflow-hidden",
+                        !b.unlocked && "grayscale blur-[0.4px]",
                       )}
-                    </CardContent>
-                  </Card>
+                      style={{
+                        opacity: b.unlocked ? 1 : 0.35,
+                        ...(b.unlocked && {
+                          borderColor: "var(--accent-dim)",
+                          boxShadow: "0 0 16px rgba(57,255,138,0.08)",
+                        }),
+                      }}
+                    >
+                      <CardContent className="flex flex-col items-center gap-2 p-5 relative">
+                        {/* Concentric pulse rings — only for unlocked */}
+                        {b.unlocked && (
+                          <div className="absolute inset-0 flex items-start justify-center pt-5 pointer-events-none">
+                            {[0, 1, 2].map((i) => (
+                              <motion.span
+                                key={i}
+                                className="absolute h-14 w-14 rounded-2xl border border-[var(--accent)]"
+                                initial={{ opacity: 0.5, scale: 1 }}
+                                animate={{ opacity: 0, scale: 1.8 }}
+                                transition={{
+                                  duration: 1.8,
+                                  ease: "easeOut",
+                                  repeat: Infinity,
+                                  delay: i * 0.6,
+                                  repeatDelay: 0.2,
+                                }}
+                              />
+                            ))}
+                          </div>
+                        )}
+
+                        <span
+                          className={cn(
+                            "relative z-10 flex h-14 w-14 items-center justify-center rounded-2xl",
+                            b.unlocked
+                              ? "bg-[var(--accent)]/15 text-[var(--accent)]"
+                              : "bg-muted text-muted-foreground",
+                          )}
+                          style={b.unlocked ? { boxShadow: "0 0 20px rgba(57,255,138,0.25)" } : {}}
+                        >
+                          <Icon name={b.iconKey} className="h-7 w-7" />
+                        </span>
+
+                        <p className="text-sm font-semibold">{b.name}</p>
+                        <p className="text-xs text-muted-foreground">{b.description}</p>
+
+                        {b.unlocked ? (
+                          <Badge
+                            variant="outline"
+                            className="border-[var(--accent)]/40 text-[var(--accent)] text-[10px] font-mono"
+                          >
+                            ✦ Unlocked
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-[10px] opacity-60">
+                            🔒 Locked
+                          </Badge>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </motion.div>
                 </TooltipTrigger>
                 <TooltipContent>Unlock rule: {ruleText(b.unlockRule)}</TooltipContent>
               </Tooltip>
